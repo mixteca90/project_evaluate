@@ -1,5 +1,5 @@
 import { cookies } from "next/headers";
-import { getDb } from "./db";
+import { getSql } from "./db";
 
 const COOKIE_NAME = "eval_session";
 
@@ -43,22 +43,21 @@ export interface UserRow {
   group_id: number | null;
 }
 
-export function findUserByName(name: string): UserRow | undefined {
-  return getDb()
-    .prepare("SELECT * FROM users WHERE name = ? AND role = 'student'")
-    .get(name) as UserRow | undefined;
+export async function findUserByName(name: string): Promise<UserRow | undefined> {
+  const sql = getSql();
+  const rows = await sql<UserRow[]>`SELECT * FROM users WHERE name = ${name} AND role = 'student'`;
+  return rows[0];
 }
 
-export function findInstructor(): UserRow | undefined {
-  return getDb()
-    .prepare("SELECT * FROM users WHERE role = 'instructor'")
-    .get() as UserRow | undefined;
+export async function findInstructor(): Promise<UserRow | undefined> {
+  const sql = getSql();
+  const rows = await sql<UserRow[]>`SELECT * FROM users WHERE role = 'instructor'`;
+  return rows[0];
 }
 
-export function listStudentsByGroup(): Map<number, UserRow[]> {
-  const rows = getDb()
-    .prepare("SELECT * FROM users WHERE role = 'student' ORDER BY group_id, id")
-    .all() as UserRow[];
+export async function listStudentsByGroup(): Promise<Map<number, UserRow[]>> {
+  const sql = getSql();
+  const rows = await sql<UserRow[]>`SELECT * FROM users WHERE role = 'student' ORDER BY group_id, id`;
   const map = new Map<number, UserRow[]>();
   for (const r of rows) {
     if (r.group_id == null) continue;

@@ -11,19 +11,14 @@ export default async function ScorePage({ params }: { params: Promise<{ groupId:
   if (!session) redirect("/login");
   if (session.role === "student" && session.groupId === groupId) redirect("/groups");
 
-  const group = getGroupById(groupId);
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const evaluation = getEvaluation(session.userId, groupId);
-  const closed = isClosed();
+  const evaluation = await getEvaluation(session.userId, groupId);
+  const closed = await isClosed();
   if (closed && !evaluation?.submitted) redirect("/groups");
 
-  let initialLevels: Record<string, number> = {};
-  try {
-    initialLevels = evaluation ? JSON.parse(evaluation.item_scores) : {};
-  } catch {
-    initialLevels = {};
-  }
+  const initialLevels: Record<string, number> = evaluation?.item_scores ?? {};
 
   const members: string[] = JSON.parse(group.members);
 

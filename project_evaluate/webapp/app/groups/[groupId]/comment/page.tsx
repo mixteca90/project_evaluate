@@ -19,12 +19,12 @@ export default async function CommentPage({
   if (!session) redirect("/login");
   if (session.role === "student" && session.groupId === groupId) redirect("/groups");
 
-  const group = getGroupById(groupId);
+  const group = await getGroupById(groupId);
   if (!group) notFound();
-  if (isClosed()) redirect("/groups");
+  if (await isClosed()) redirect("/groups");
 
-  const evaluation = getEvaluation(session.userId, groupId);
-  const missing = getMissingItemIds(session.userId, groupId);
+  const evaluation = await getEvaluation(session.userId, groupId);
+  const missing = await getMissingItemIds(session.userId, groupId);
   const submitAction = submitEvaluationAction.bind(null, groupId);
 
   return (

@@ -1,4 +1,4 @@
-import { getDb } from "./db";
+import { getSql, ensureSchema } from "./db";
 
 // 조별 명단.txt 기준 시드 데이터 (2026-07-02 기준: 3조 조장 오소영)
 const GROUPS = [
@@ -27,43 +27,35 @@ const GROUPS = [
 
 const INSTRUCTOR_NAME = "이정현";
 
-export function seed(): void {
-  const db = getDb();
-  const groupCount = (db.prepare("SELECT COUNT(*) as c FROM groups").get() as { c: number }).c;
+export async function seed(): Promise<void> {
+  await ensureSchema();
+  const sql = getSql();
+
+  const [{ c: groupCount }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int as c FROM groups`;
   if (groupCount > 0) {
     console.log("이미 시드되어 있습니다. (groups:", groupCount, ")");
     return;
   }
 
-  const insertGroup = db.prepare(
-    `INSERT INTO groups (id, name, leader, members, topic, self_report_completed, self_report_plan, self_report_ai)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  );
-  const insertUser = db.prepare(
-    `INSERT INTO users (id, name, role, group_id) VALUES (?, ?, ?, ?)`
-  );
-
-  const tx = db.transaction(() => {
+  await sql.begin(async (tx) => {
     let userId = 1;
     for (const g of GROUPS) {
-      insertGroup.run(
-        g.id,
-        g.name,
-        g.leader,
-        JSON.stringify(g.members),
-        g.topic,
-        "(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)",
-        "(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)",
-        "(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)"
-      );
+      await tx`
+        INSERT INTO groups (id, name, leader, members, topic, self_report_completed, self_report_plan, self_report_ai)
+        VALUES (
+          ${g.id}, ${g.name}, ${g.leader}, ${JSON.stringify(g.members)}, ${g.topic},
+          '(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)',
+          '(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)',
+          '(발표 전 자기신고 예정 — 강사가 사전에 입력 필요)'
+        )
+      `;
       for (const memberName of g.members) {
-        insertUser.run(userId, memberName, "student", g.id);
+        await tx`INSERT INTO users (id, name, role, group_id) VALUES (${userId}, ${memberName}, 'student', ${g.id})`;
         userId++;
       }
     }
-    insertUser.run(userId, INSTRUCTOR_NAME, "instructor", null);
+    await tx`INSERT INTO users (id, name, role, group_id) VALUES (${userId}, ${INSTRUCTOR_NAME}, 'instructor', NULL)`;
   });
 
-  tx();
   console.log("시드 완료:", GROUPS.length, "개 조,", GROUPS.reduce((s, g) => s + g.members.length, 0) + 1, "명");
 }

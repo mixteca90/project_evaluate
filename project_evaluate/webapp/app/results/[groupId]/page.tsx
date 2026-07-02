@@ -14,24 +14,24 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ g
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const group = getGroupById(groupId);
+  const group = await getGroupById(groupId);
   if (!group) notFound();
 
-  const closed = isClosed();
+  const closed = await isClosed();
   let perItemScore: number[] | "PENDING_INSTRUCTOR";
   let totalScore: number | "PENDING_INSTRUCTOR";
 
   if (closed) {
-    const final = getFinalResult(groupId);
+    const final = await getFinalResult(groupId);
     perItemScore = final ? JSON.parse(final.per_item_final_score) : "PENDING_INSTRUCTOR";
     totalScore = final ? final.total_score : "PENDING_INSTRUCTOR";
   } else {
-    const provisional = computeProvisionalResult(groupId);
+    const provisional = await computeProvisionalResult(groupId);
     perItemScore = provisional.perItemScore;
     totalScore = provisional.totalScore;
   }
 
-  const comments = getComments(groupId);
+  const comments = await getComments(groupId);
 
   return (
     <div className="flex flex-col min-h-screen">

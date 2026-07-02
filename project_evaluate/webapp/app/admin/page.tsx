@@ -16,16 +16,18 @@ export default async function AdminPage({
   if (!session) redirect("/login");
   if (session.role !== "instructor") redirect("/groups");
 
-  const closed = isClosed();
-  const groups = getGroups();
+  const closed = await isClosed();
+  const groups = await getGroups();
 
-  const groupData = groups.map((g) => {
-    const matrix = getMatrix(g.id);
-    const result = computeProvisionalResult(g.id);
-    const completeness = checkCompleteness(g.id);
-    const trimmedSet = new Set(result.trimmedEvaluatorIds);
-    return { group: g, matrix, result, completeness, trimmedSet };
-  });
+  const groupData = await Promise.all(
+    groups.map(async (g) => {
+      const matrix = await getMatrix(g.id);
+      const result = await computeProvisionalResult(g.id);
+      const completeness = await checkCompleteness(g.id);
+      const trimmedSet = new Set(result.trimmedEvaluatorIds);
+      return { group: g, matrix, result, completeness, trimmedSet };
+    })
+  );
 
   const allComplete = groupData.every((gd) => gd.completeness.missingEvaluators.length === 0);
 

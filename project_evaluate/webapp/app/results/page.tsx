@@ -9,38 +9,42 @@ export default async function ResultsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const closed = isClosed();
-  const groups = getGroups();
+  const closed = await isClosed();
+  const groups = await getGroups();
 
   type Row = { groupId: number; name: string; topic: string; totalScore: number | "PENDING_INSTRUCTOR"; rank: number | null; progress: string };
   let rows: Row[];
 
   if (closed) {
-    const finals = getAllFinalResults();
-    rows = finals.map((f) => {
-      const g = groups.find((gg) => gg.id === f.group_id)!;
-      const c = checkCompleteness(f.group_id);
-      return {
-        groupId: f.group_id,
-        name: g.name,
-        topic: g.topic,
-        totalScore: f.total_score,
-        rank: f.rank,
-        progress: `${c.submittedComplete}/${c.expected}명 완료`,
-      };
-    });
+    const finals = await getAllFinalResults();
+    rows = await Promise.all(
+      finals.map(async (f) => {
+        const g = groups.find((gg) => gg.id === f.group_id)!;
+        const c = await checkCompleteness(f.group_id);
+        return {
+          groupId: f.group_id,
+          name: g.name,
+          topic: g.topic,
+          totalScore: f.total_score,
+          rank: f.rank,
+          progress: `${c.submittedComplete}/${c.expected}명 완료`,
+        };
+      })
+    );
   } else {
-    const computed = groups.map((g) => {
-      const result = computeProvisionalResult(g.id);
-      const c = checkCompleteness(g.id);
-      return {
-        groupId: g.id,
-        name: g.name,
-        topic: g.topic,
-        totalScore: result.totalScore,
-        progress: `${c.submittedComplete}/${c.expected}명 완료`,
-      };
-    });
+    const computed = await Promise.all(
+      groups.map(async (g) => {
+        const result = await computeProvisionalResult(g.id);
+        const c = await checkCompleteness(g.id);
+        return {
+          groupId: g.id,
+          name: g.name,
+          topic: g.topic,
+          totalScore: result.totalScore,
+          progress: `${c.submittedComplete}/${c.expected}명 완료`,
+        };
+      })
+    );
     const ranked = [...computed]
       .filter((r) => typeof r.totalScore === "number")
       .sort((a, b) => (b.totalScore as number) - (a.totalScore as number));

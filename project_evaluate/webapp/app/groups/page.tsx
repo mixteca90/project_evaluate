@@ -9,9 +9,12 @@ export default async function GroupsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const closed = isClosed();
-  const allGroups = getGroups();
+  const closed = await isClosed();
+  const allGroups = await getGroups();
   const targets = allGroups.filter((g) => !(session!.role === "student" && g.id === session!.groupId));
+  const targetsWithStatus = await Promise.all(
+    targets.map(async (g) => ({ group: g, evaluation: await getEvaluation(session.userId, g.id) }))
+  );
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -30,8 +33,7 @@ export default async function GroupsPage() {
       </div>
 
       <div className="flex-1 px-5 py-4 space-y-3">
-        {targets.map((g) => {
-          const ev = getEvaluation(session.userId, g.id);
+        {targetsWithStatus.map(({ group: g, evaluation: ev }) => {
           const submitted = !!ev?.submitted;
           const badge = closed
             ? submitted

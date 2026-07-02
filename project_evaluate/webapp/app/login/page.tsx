@@ -8,8 +8,8 @@ export default async function LoginPage({
   searchParams: Promise<{ error?: string; instructor?: string }>;
 }) {
   const { error, instructor } = await searchParams;
-  const groups = getGroups();
-  const studentsByGroup = listStudentsByGroup();
+  const groups = await getGroups();
+  const studentsByGroup = await listStudentsByGroup();
 
   return (
     <div className="flex flex-col min-h-screen">
