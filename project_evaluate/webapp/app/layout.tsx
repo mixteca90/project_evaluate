@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
+// Supabase DB가 시드니(ap-southeast-2)에 있어, 서버리스 함수도 같은 리전에서 실행되도록 고정
+// (기본 리전인 미국 동부에서 실행되면 DB 왕복마다 태평양을 두 번 건너 매우 느려짐)
+export const preferredRegion = "syd1";
+
 export const metadata: Metadata = {
   title: "조별 프로젝트 평가",
   description: "조별 프로젝트 상호평가 앱",

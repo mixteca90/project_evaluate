@@ -126,17 +126,6 @@ export async function computeProvisionalResult(groupId: number): Promise<GroupRe
   return calcGroupResult(await toEvaluatorScores(groupId, true));
 }
 
-export async function expectedEvaluatorCount(groupId: number): Promise<number> {
-  const sql = getSql();
-  const otherStudents = await sql<{ c: number }[]>`
-    SELECT COUNT(*)::int as c FROM users WHERE role = 'student' AND group_id != ${groupId}
-  `;
-  const instructorExists = await sql<{ c: number }[]>`
-    SELECT COUNT(*)::int as c FROM users WHERE role = 'instructor'
-  `;
-  return otherStudents[0].c + instructorExists[0].c;
-}
-
 export interface CompletenessStatus {
   expected: number;
   submittedComplete: number;
@@ -144,24 +133,27 @@ export interface CompletenessStatus {
 }
 
 // F13 마감 전 완결성 검증: 대상 평가자 전원이 제출 완료(submitted=true) & 13개 항목 모두 존재해야 함
+// evaluations를 그룹 단위로 1회에 모두 가져와 평가자 수만큼 왕복하지 않도록 한다(N+1 방지).
 export async function checkCompleteness(groupId: number): Promise<CompletenessStatus> {
   const sql = getSql();
-  const expected = await expectedEvaluatorCount(groupId);
   const evaluators = await sql<{ id: number; name: string; role: string }[]>`
     SELECT u.id, u.name, u.role FROM users u
     WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
   `;
+  const evalRows = await sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`;
+  const byEvaluator = new Map(evalRows.map((r) => [r.evaluator_id, r]));
 
   const missing: CompletenessStatus["missingEvaluators"] = [];
   let submittedComplete = 0;
 
   for (const ev of evaluators) {
-    const row = await getEvaluation(ev.id, groupId);
+    const row = byEvaluator.get(ev.id);
     if (!row || !row.submitted) {
       missing.push({ ...ev, reason: "미제출" });
       continue;
     }
-    const missingItems = await getMissingItemIds(ev.id, groupId);
+    const scores = row.item_scores ?? {};
+    const missingItems = ITEMS.filter((it) => scores[it.id] === undefined);
     if (missingItems.length > 0) {
       missing.push({ ...ev, reason: `세부항목 ${missingItems.length}개 누락` });
       continue;
@@ -169,7 +161,7 @@ export async function checkCompleteness(groupId: number): Promise<CompletenessSt
     submittedComplete++;
   }
 
-  return { expected, submittedComplete, missingEvaluators: missing };
+  return { expected: evaluators.length, submittedComplete, missingEvaluators: missing };
 }
 
 export interface AggregatedRow {
@@ -276,6 +268,7 @@ export async function getComments(groupId: number): Promise<{ anonLabel: number;
   `;
 }
 
+// evaluations를 그룹 단위로 1회에 모두 가져와 평가자 수만큼 왕복하지 않도록 한다(N+1 방지).
 export async function getMatrix(groupId: number): Promise<
   { evaluatorId: number; name: string; role: string; total: number; submitted: boolean }[]
 > {
@@ -284,19 +277,19 @@ export async function getMatrix(groupId: number): Promise<
     SELECT u.id, u.name, u.role FROM users u
     WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
   `;
+  const evalRows = await sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`;
+  const byEvaluator = new Map(evalRows.map((r) => [r.evaluator_id, r]));
 
-  const out = [];
-  for (const ev of evaluators) {
-    const row = await getEvaluation(ev.id, groupId);
+  return evaluators.map((ev) => {
+    const row = byEvaluator.get(ev.id);
     const levels = row?.item_scores ?? {};
     const total = ITEMS.reduce((s, it) => s + levelToScore(levels[it.id] ?? 0, it.points), 0);
-    out.push({
+    return {
       evaluatorId: ev.id,
       name: ev.name,
       role: ev.role,
       total,
       submitted: !!row?.submitted,
-    });
-  }
-  return out;
+    };
+  });
 }
