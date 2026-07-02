@@ -21,9 +21,11 @@ export default async function AdminPage({
 
   const groupData = await Promise.all(
     groups.map(async (g) => {
-      const matrix = await getMatrix(g.id);
-      const result = await computeProvisionalResult(g.id);
-      const completeness = await checkCompleteness(g.id);
+      const [matrix, result, completeness] = await Promise.all([
+        getMatrix(g.id),
+        computeProvisionalResult(g.id),
+        checkCompleteness(g.id),
+      ]);
       const trimmedSet = new Set(result.trimmedEvaluatorIds);
       return { group: g, matrix, result, completeness, trimmedSet };
     })

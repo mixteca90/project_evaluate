@@ -34,8 +34,7 @@ export default async function ResultsPage() {
   } else {
     const computed = await Promise.all(
       groups.map(async (g) => {
-        const result = await computeProvisionalResult(g.id);
-        const c = await checkCompleteness(g.id);
+        const [result, c] = await Promise.all([computeProvisionalResult(g.id), checkCompleteness(g.id)]);
         return {
           groupId: g.id,
           name: g.name,
