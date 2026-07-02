@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s http://localhost:3100/login)",
+      "Bash(grep -oE '<form[^>]*>.{0,400}')",
+      "Bash(node -e \"console.log\\(encodeURIComponent\\(JSON.stringify\\({userId:1,name:'나은수',role:'student',groupId:1}\\)\\)\\)\")",
+      "Bash(curl -s -b eval_session=__CMDSUB_OUTPUT__ http://localhost:3100/groups/2/score)",
+      "Bash(node -e \"console.log\\(encodeURIComponent\\(JSON.stringify\\({userId:16,name:'이정현',role:'instructor',groupId:null}\\)\\)\\)\")",
+      "Bash(curl -s -b eval_session=__TRACKED_VAR__ http://localhost:3100/admin)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' -b eval_session=__CMDSUB_OUTPUT__ http://localhost:3100/groups/2/score)",
+      "Bash(npx tsx *)",
+      "Bash(curl -s -b eval_session=__CMDSUB_OUTPUT__ http://localhost:3100/results)",
+      "Bash(netstat -ano)",
+      "Bash(powershell -Command \"Stop-Process -Id 5784 -Force\")",
+      "Bash(sqlite3 data/eval.db \"SELECT COUNT\\(*\\) FROM evaluations;\")",
+      "Bash(node -e ' *)",
+      "Bash(npx vercel *)"
+    ]
+  }
+}
