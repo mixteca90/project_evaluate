@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-// Supabase DB가 시드니(ap-southeast-2)에 있어, 서버리스 함수도 같은 리전에서 실행되도록 고정
-// (기본 리전인 미국 동부에서 실행되면 DB 왕복마다 태평양을 두 번 건너 매우 느려짐)
+// Supabase DB가 시드니(ap-southeast-2)에 있어, 서버리스 함수도 같은 리전에서 실행되어야 한다.
+// 실제 리전 고정은 Vercel 프로젝트 설정(serverlessFunctionRegion=syd1)으로 적용되어 있으며,
+// 아래 preferredRegion은 의도를 코드에 남기기 위한 선언이다. 설정을 바꾸면 DB 왕복마다
+// 태평양을 건너게 되어 결과 페이지가 수 배 느려지므로 임의로 변경하지 말 것.
 export const preferredRegion = "syd1";
 
 export const metadata: Metadata = {
