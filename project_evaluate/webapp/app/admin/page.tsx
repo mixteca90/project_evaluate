@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import { getGroups, getMatrix, computeProvisionalResult, checkCompleteness } from "@/lib/repo";
+import { getGroups, getGroupStatus } from "@/lib/repo";
 import { formatScore } from "@/lib/scoring";
 import { isClosed } from "@/lib/db";
 import { closeEvaluationAction } from "@/app/actions";
@@ -21,11 +21,7 @@ export default async function AdminPage({
 
   const groupData = await Promise.all(
     groups.map(async (g) => {
-      const [matrix, result, completeness] = await Promise.all([
-        getMatrix(g.id),
-        computeProvisionalResult(g.id),
-        checkCompleteness(g.id),
-      ]);
+      const { matrix, result, completeness } = await getGroupStatus(g.id);
       const trimmedSet = new Set(result.trimmedEvaluatorIds);
       return { group: g, matrix, result, completeness, trimmedSet };
     })

@@ -166,6 +166,65 @@ export async function checkCompleteness(groupId: number): Promise<CompletenessSt
   return { expected: evaluators.length, submittedComplete, missingEvaluators: missing };
 }
 
+export interface GroupStatus {
+  result: GroupResult;
+  completeness: CompletenessStatus;
+  matrix: { evaluatorId: number; name: string; role: string; total: number; submitted: boolean }[];
+}
+
+// 결과/관리자 화면에서 필요한 3가지(잠정 집계, 완결성, 매트릭스)를 evaluators/evaluations
+// 쿼리 2회(병렬)만으로 한 번에 계산한다. computeProvisionalResult+checkCompleteness+getMatrix를
+// 각각 따로 부르면 그룹당 쿼리가 중복되므로, 한 화면에서 여러 값이 동시에 필요할 때는 이 함수를 쓴다.
+export async function getGroupStatus(groupId: number): Promise<GroupStatus> {
+  const sql = getSql();
+  const [evaluators, evaluations] = await Promise.all([
+    sql<{ id: number; name: string; role: "student" | "instructor" }[]>`
+      SELECT u.id, u.name, u.role FROM users u
+      WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
+    `,
+    sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`,
+  ]);
+
+  const byEvaluator = new Map(evaluations.map((r) => [r.evaluator_id, r]));
+  const roleById = new Map(evaluators.map((e) => [e.id, e.role]));
+
+  const matrix = evaluators.map((ev) => {
+    const row = byEvaluator.get(ev.id);
+    const levels = row?.item_scores ?? {};
+    const total = ITEMS.reduce((s, it) => s + levelToScore(levels[it.id] ?? 0, it.points), 0);
+    return { evaluatorId: ev.id, name: ev.name, role: ev.role, total, submitted: !!row?.submitted };
+  });
+
+  const missing: CompletenessStatus["missingEvaluators"] = [];
+  let submittedComplete = 0;
+  for (const ev of evaluators) {
+    const row = byEvaluator.get(ev.id);
+    if (!row || !row.submitted) {
+      missing.push({ ...ev, reason: "미제출" });
+      continue;
+    }
+    const scores = row.item_scores ?? {};
+    const missingItems = ITEMS.filter((it) => scores[it.id] === undefined);
+    if (missingItems.length > 0) {
+      missing.push({ ...ev, reason: `세부항목 ${missingItems.length}개 누락` });
+      continue;
+    }
+    submittedComplete++;
+  }
+  const completeness: CompletenessStatus = { expected: evaluators.length, submittedComplete, missingEvaluators: missing };
+
+  const evaluatorScores: EvaluatorScore[] = evaluations
+    .filter((r) => r.submitted)
+    .map((r) => {
+      const levels = r.item_scores ?? {};
+      const itemScores = ITEMS.map((it) => levelToScore(levels[it.id] ?? 0, it.points));
+      return { evaluatorId: r.evaluator_id, role: roleById.get(r.evaluator_id)!, itemScores };
+    });
+  const result = calcGroupResult(evaluatorScores);
+
+  return { result, completeness, matrix };
+}
+
 export interface AggregatedRow {
   group_id: number;
   per_item_final_score: string;

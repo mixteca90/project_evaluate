@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "@/lib/session";
-import { getGroups, computeProvisionalResult, checkCompleteness, getAllFinalResults } from "@/lib/repo";
+import { getGroups, getGroupStatus, checkCompleteness, getAllFinalResults } from "@/lib/repo";
 import { formatScore } from "@/lib/scoring";
 import { isClosed } from "@/lib/db";
 
@@ -34,7 +34,7 @@ export default async function ResultsPage() {
   } else {
     const computed = await Promise.all(
       groups.map(async (g) => {
-        const [result, c] = await Promise.all([computeProvisionalResult(g.id), checkCompleteness(g.id)]);
+        const { result, completeness: c } = await getGroupStatus(g.id);
         return {
           groupId: g.id,
           name: g.name,
