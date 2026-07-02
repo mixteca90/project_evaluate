@@ -1,0 +1,7 @@
+{
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"git restore --staged ../.omc/sessions/44f98187-1e14-4f91-886a-eb4c3a441951.json ../.omc/sessions/56373d1b-d467-4f4a-b3a6-0b4628914782.json ../.omc/sessions/dece60a3-5962-41cd-95d9-f4e0ec91...",
+  "error": "Exit code 128\nfatal: could not resolve HEAD",
+  "timestamp": "2026-07-02T04:00:01.381Z",
+  "retry_count": 1
+}
