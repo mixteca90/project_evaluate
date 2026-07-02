@@ -87,31 +87,47 @@ export default async function ResultsPage() {
       </div>
 
       <div className="flex-1 px-5 py-4 space-y-3">
-        {rows.map((r) => (
-          <Link
-            key={r.groupId}
-            href={`/results/${r.groupId}`}
-            className={`rounded-2xl border p-4 flex items-center gap-3 shadow-sm ${
-              r.rank === 1 ? "border-2 border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
-            }`}
-          >
-            <div
-              className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
-                r.rank === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-              }`}
-            >
-              {r.rank ?? "-"}
+        {rows.map((r) => {
+          const canViewDetail = session.role === "instructor" || r.groupId === session.groupId;
+          const cardClass = `rounded-2xl border p-4 flex items-center gap-3 shadow-sm ${
+            r.rank === 1 ? "border-2 border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
+          } ${canViewDetail ? "" : "opacity-70"}`;
+          const content = (
+            <>
+              <div
+                className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
+                  r.rank === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {r.rank ?? "-"}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-bold text-slate-900">{r.name}</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {r.progress}
+                  {!canViewDetail && " · 상세는 본인 조만 열람 가능"}
+                </p>
+              </div>
+              <p className={`text-xl font-extrabold ${r.rank === 1 ? "text-blue-700" : "text-slate-700"}`}>
+                {formatScore(r.totalScore)}
+              </p>
+            </>
+          );
+          return canViewDetail ? (
+            <Link key={r.groupId} href={`/results/${r.groupId}`} className={cardClass}>
+              {content}
+            </Link>
+          ) : (
+            <div key={r.groupId} className={cardClass}>
+              {content}
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-bold text-slate-900">{r.name}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{r.progress}</p>
-            </div>
-            <p className={`text-xl font-extrabold ${r.rank === 1 ? "text-blue-700" : "text-slate-700"}`}>
-              {formatScore(r.totalScore)}
-            </p>
-          </Link>
-        ))}
-        <p className="text-center text-[11px] text-slate-400 pt-2">조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →</p>
+          );
+        })}
+        <p className="text-center text-[11px] text-slate-400 pt-2">
+          {session.role === "instructor"
+            ? "조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →"
+            : "본인 조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →"}
+        </p>
       </div>
 
       <div className="p-3 bg-white border-t border-slate-100 flex justify-around">

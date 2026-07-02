@@ -13,6 +13,8 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ g
   const groupId = Number(groupIdStr);
   const session = await getSession();
   if (!session) redirect("/login");
+  // 학생은 본인 소속 조의 상세 결과·의견만 열람 가능(강사는 전체 조 열람 가능 — I1에는 의견이 없어 P6이 유일한 열람 경로)
+  if (session.role === "student" && session.groupId !== groupId) redirect("/results");
 
   const group = await getGroupById(groupId);
   if (!group) notFound();
