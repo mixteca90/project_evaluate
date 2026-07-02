@@ -3,16 +3,17 @@ import postgres from "postgres";
 declare global {
   // eslint-disable-next-line no-var
   var __evalSql: ReturnType<typeof postgres> | undefined;
+  // eslint-disable-next-line no-var
+  var __evalDirectSql: ReturnType<typeof postgres> | undefined;
 }
 
 // Vercel 서버리스 환경에서는 함수 인스턴스마다 커넥션이 새로 생기므로
-// prepare(false) + 소량 커넥션으로 Supabase pooler(6543)와 궁합을 맞춘다.
-// DATABASE_URL 체크는 실제 쿼리 시점(getSql 호출 시)에만 하여, 빌드 타임 모듈 로딩이
+// prepare(false) + 소량 커넥션으로 Supabase transaction pooler(6543)와 궁합을 맞춘다.
+// 환경변수 체크는 실제 쿼리 시점(getSql 호출 시)에만 하여, 빌드 타임 모듈 로딩이
 // 환경변수 미설정으로 실패하지 않도록 한다.
-function createConnection() {
-  const connectionString = process.env.DATABASE_URL;
+function createConnection(connectionString: string | undefined, label: string) {
   if (!connectionString) {
-    throw new Error("DATABASE_URL 환경변수가 설정되지 않았습니다. Supabase 연결 문자열을 .env.local / Vercel 환경변수에 넣어주세요.");
+    throw new Error(`${label} 환경변수가 설정되지 않았습니다. Supabase 연결 문자열을 .env.local / Vercel 환경변수에 넣어주세요.`);
   }
   return postgres(connectionString, {
     prepare: false,
@@ -23,15 +24,24 @@ function createConnection() {
   });
 }
 
+// 앱 런타임 쿼리용 (transaction pooler, 6543)
 export function getSql() {
   if (!global.__evalSql) {
-    global.__evalSql = createConnection();
+    global.__evalSql = createConnection(process.env.DATABASE_URL, "DATABASE_URL");
   }
   return global.__evalSql;
 }
 
+// 스키마 생성/시드처럼 1회성 작업용 (session pooler, 5432) — 없으면 DATABASE_URL로 대체
+export function getDirectSql() {
+  if (!global.__evalDirectSql) {
+    global.__evalDirectSql = createConnection(process.env.DIRECT_URL ?? process.env.DATABASE_URL, "DIRECT_URL");
+  }
+  return global.__evalDirectSql;
+}
+
 export async function ensureSchema(): Promise<void> {
-  const sql = getSql();
+  const sql = getDirectSql();
   await sql`
     CREATE TABLE IF NOT EXISTS groups (
       id INTEGER PRIMARY KEY,

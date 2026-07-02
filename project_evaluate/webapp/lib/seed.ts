@@ -1,4 +1,4 @@
-import { getSql, ensureSchema } from "./db";
+import { getDirectSql, ensureSchema } from "./db";
 
 // 조별 명단.txt 기준 시드 데이터 (2026-07-02 기준: 3조 조장 오소영)
 const GROUPS = [
@@ -29,7 +29,7 @@ const INSTRUCTOR_NAME = "이정현";
 
 export async function seed(): Promise<void> {
   await ensureSchema();
-  const sql = getSql();
+  const sql = getDirectSql();
 
   const [{ c: groupCount }] = await sql<{ c: number }[]>`SELECT COUNT(*)::int as c FROM groups`;
   if (groupCount > 0) {
