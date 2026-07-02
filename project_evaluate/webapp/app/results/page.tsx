@@ -8,6 +8,8 @@ import { isClosed } from "@/lib/db";
 export default async function ResultsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  // 학생은 전체 순위 목록을 보지 않고 본인 조 상세 결과로 바로 이동(다른 조 점수는 노출하지 않음)
+  if (session.role === "student") redirect(`/results/${session.groupId}`);
 
   const closed = await isClosed();
   const groups = await getGroups();
@@ -87,47 +89,32 @@ export default async function ResultsPage() {
       </div>
 
       <div className="flex-1 px-5 py-4 space-y-3">
-        {rows.map((r) => {
-          const canViewDetail = session.role === "instructor" || r.groupId === session.groupId;
-          const cardClass = `rounded-2xl border p-4 flex items-center gap-3 shadow-sm ${
-            r.rank === 1 ? "border-2 border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
-          } ${canViewDetail ? "" : "opacity-70"}`;
-          const content = (
-            <>
-              <div
-                className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
-                  r.rank === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {r.rank ?? "-"}
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-bold text-slate-900">{r.name}</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  {r.progress}
-                  {!canViewDetail && " · 상세는 본인 조만 열람 가능"}
-                </p>
-              </div>
-              <p className={`text-xl font-extrabold ${r.rank === 1 ? "text-blue-700" : "text-slate-700"}`}>
-                {formatScore(r.totalScore)}
-              </p>
-            </>
-          );
-          return canViewDetail ? (
-            <Link key={r.groupId} href={`/results/${r.groupId}`} className={cardClass}>
-              {content}
-            </Link>
-          ) : (
-            <div key={r.groupId} className={cardClass}>
-              {content}
+        {/* 이 화면은 강사만 도달합니다(학생은 위에서 본인 조 상세로 리다이렉트됨) — 전체 조 열람 가능 */}
+        {rows.map((r) => (
+          <Link
+            key={r.groupId}
+            href={`/results/${r.groupId}`}
+            className={`rounded-2xl border p-4 flex items-center gap-3 shadow-sm ${
+              r.rank === 1 ? "border-2 border-blue-600 bg-blue-50" : "border-slate-200 bg-white"
+            }`}
+          >
+            <div
+              className={`w-9 h-9 rounded-full text-sm font-bold flex items-center justify-center ${
+                r.rank === 1 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {r.rank ?? "-"}
             </div>
-          );
-        })}
-        <p className="text-center text-[11px] text-slate-400 pt-2">
-          {session.role === "instructor"
-            ? "조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →"
-            : "본인 조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →"}
-        </p>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-slate-900">{r.name}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5">{r.progress}</p>
+            </div>
+            <p className={`text-xl font-extrabold ${r.rank === 1 ? "text-blue-700" : "text-slate-700"}`}>
+              {formatScore(r.totalScore)}
+            </p>
+          </Link>
+        ))}
+        <p className="text-center text-[11px] text-slate-400 pt-2">조를 선택하면 세부항목 점수와 익명 의견을 볼 수 있어요 →</p>
       </div>
 
       <div className="p-3 bg-white border-t border-slate-100 flex justify-around">

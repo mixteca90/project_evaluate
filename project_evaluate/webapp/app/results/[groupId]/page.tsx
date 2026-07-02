@@ -34,11 +34,14 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ g
   }
 
   const comments = await getComments(groupId);
+  // 학생에게는 이 화면이 "결과" 탭의 최종 목적지이므로 뒤로가기는 평가 목록으로,
+  // 강사는 전체 순위 목록(P5)이 별도로 있으므로 그쪽으로 돌아간다.
+  const backHref = session.role === "instructor" ? "/results" : "/groups";
 
   return (
     <div className="flex flex-col min-h-screen">
       <div className="pt-10 px-5 pb-3 bg-white border-b border-slate-100 flex items-center justify-between">
-        <Link href="/results" className="text-slate-400 text-lg">
+        <Link href={backHref} className="text-slate-400 text-lg">
           ←
         </Link>
         <p className="text-sm font-semibold text-slate-900">{group.name}</p>
@@ -105,6 +108,23 @@ export default async function ResultDetailPage({ params }: { params: Promise<{ g
             </div>
           )}
         </div>
+      </div>
+
+      <div className="p-3 bg-white border-t border-slate-100 flex justify-around">
+        <Link href="/groups" className="flex flex-col items-center gap-0.5 text-slate-400">
+          <span className="text-lg">📋</span>
+          <span className="text-[10px] font-semibold">평가하기</span>
+        </Link>
+        <span className="flex flex-col items-center gap-0.5 text-blue-600">
+          <span className="text-lg">🏆</span>
+          <span className="text-[10px] font-semibold">결과</span>
+        </span>
+        {session.role === "instructor" && (
+          <Link href="/admin" className="flex flex-col items-center gap-0.5 text-slate-400">
+            <span className="text-lg">🛠️</span>
+            <span className="text-[10px] font-semibold">관리</span>
+          </Link>
+        )}
       </div>
     </div>
   );
