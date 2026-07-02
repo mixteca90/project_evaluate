@@ -136,11 +136,13 @@ export interface CompletenessStatus {
 // evaluations를 그룹 단위로 1회에 모두 가져와 평가자 수만큼 왕복하지 않도록 한다(N+1 방지).
 export async function checkCompleteness(groupId: number): Promise<CompletenessStatus> {
   const sql = getSql();
-  const evaluators = await sql<{ id: number; name: string; role: string }[]>`
-    SELECT u.id, u.name, u.role FROM users u
-    WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
-  `;
-  const evalRows = await sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`;
+  const [evaluators, evalRows] = await Promise.all([
+    sql<{ id: number; name: string; role: string }[]>`
+      SELECT u.id, u.name, u.role FROM users u
+      WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
+    `,
+    sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`,
+  ]);
   const byEvaluator = new Map(evalRows.map((r) => [r.evaluator_id, r]));
 
   const missing: CompletenessStatus["missingEvaluators"] = [];
@@ -273,11 +275,13 @@ export async function getMatrix(groupId: number): Promise<
   { evaluatorId: number; name: string; role: string; total: number; submitted: boolean }[]
 > {
   const sql = getSql();
-  const evaluators = await sql<{ id: number; name: string; role: string }[]>`
-    SELECT u.id, u.name, u.role FROM users u
-    WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
-  `;
-  const evalRows = await sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`;
+  const [evaluators, evalRows] = await Promise.all([
+    sql<{ id: number; name: string; role: string }[]>`
+      SELECT u.id, u.name, u.role FROM users u
+      WHERE (u.role = 'instructor') OR (u.role = 'student' AND u.group_id != ${groupId})
+    `,
+    sql<EvalRow[]>`SELECT * FROM evaluations WHERE group_id = ${groupId}`,
+  ]);
   const byEvaluator = new Map(evalRows.map((r) => [r.evaluator_id, r]));
 
   return evaluators.map((ev) => {
